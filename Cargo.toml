@@ -8,3 +8,4 @@ edition = "2018"
 
 [dependencies]
 quicksilver = "0.4.0-alpha5"
+rand = "*"
