@@ -14,6 +14,7 @@ struct Node {
 
 struct World {
     nodes: Vec<Node>,
+    connections: Vec<(u32, u32)>,
 }
 
 fn gen_world() -> World {
@@ -33,7 +34,14 @@ fn gen_world() -> World {
         nodes.push(new_node);
     }
 
-    World { nodes }
+    let connections_count = 40;
+    let mut connections = Vec::new();
+    let conn_dist = Uniform::from(0..node_count);
+    for _ in 0..connections_count {
+        connections.push((conn_dist.sample(&mut rng), conn_dist.sample(&mut rng)))
+    }
+
+    World { nodes, connections }
 }
 
 fn main() {
@@ -51,10 +59,19 @@ async fn app(window: Window, mut gfx: Graphics, mut input: Input) -> Result<()> 
 
     // Clear the screen to a blank, white color
     gfx.clear(Color::WHITE);
-    for node in world.nodes {
+    for node in &world.nodes {
         let node_view = Circle::new(Vector::new(node.x, node.y), 10.0);
         gfx.fill_circle(&node_view, Color::BLACK);
         gfx.stroke_circle(&node_view, Color::BLACK);
+    }
+
+    for connection in world.connections {
+        let node1 = &world.nodes[connection.0 as usize];
+        let node2 = &world.nodes[connection.1 as usize];
+        gfx.stroke_path(
+            &[Vector::new(node1.x, node1.y), Vector::new(node2.x, node2.y)],
+            Color::BLACK,
+        );
     }
 
     // Paint a blue square with a red outline in the center of our screen
