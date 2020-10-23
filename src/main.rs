@@ -19,7 +19,7 @@ const HEIGHT: f32 = 1024.0;
 const LENGTH: f32 = 768.0;
 
 impl Node {
-    pub fn gen(mut rng: ThreadRng) -> Self {
+    pub fn new(mut rng: ThreadRng) -> Self {
         let x_dist = Uniform::from(0.0..HEIGHT);
         let y_dist = Uniform::from(0.0..LENGTH);
         Node {
@@ -35,17 +35,17 @@ struct World {
 }
 
 impl World {
-    pub fn gen() -> World {
+    pub fn new() -> World {
         let node_count = 20;
 
         let mut rng = rand::thread_rng();
         let nodes: Vec<Node> = (0..node_count)
-            .map(|_| Node::gen(rng))
+            .map(|_| Node::new(rng))
             .collect();
 
         let connections_count = 40;
         let mut connections: Vec<(u32, u32)>  = Vec::new();
-        for i in 0..connections_count {
+        for _ in 0..connections_count {
             let distrib = Uniform::from(0..nodes.len());
             let node_index = distrib.sample(&mut rng);
             let node = nodes.get(node_index).unwrap();
@@ -63,35 +63,25 @@ impl World {
                 .map(|elem| elem / sum_weights)
                 .collect();
 
-            #[cfg(debug_assertions)]
-            if i == 0 {
-                println!("{:?}", &scaled_weights);
-            };
-
-
-            for (fst_connection, snd_connection) in connections.iter() {
-                let node1 = nodes.get(*fst_connection as usize).unwrap();
-                let node2 = nodes.get(*snd_connection as usize).unwrap();
-                let existed_line = LineSegment {
-                    from: point(node1.x, node1.y),
-                    to: point(node2.x, node2.y)
+            for (supposed_node_position, item) in scaled_weights.iter_mut().enumerate() {
+                let supposed_node = nodes.get(supposed_node_position).unwrap();
+                let supposed_line = LineSegment {
+                    from: point(node.x, node.y),
+                    to: point(supposed_node.x, supposed_node.y)
                 };
-                for (supposed_node_position, item) in scaled_weights.iter_mut().enumerate() {
-                    let supposed_node = nodes.get(supposed_node_position).unwrap();
-                    let supposed_line = LineSegment {
-                        from: point(node.x, node.y),
-                        to: point(supposed_node.x, supposed_node.y)
+                for (fst_connection, snd_connection) in connections.iter() {
+                    let node1 = nodes.get(*fst_connection as usize).unwrap();
+                    let node2 = nodes.get(*snd_connection as usize).unwrap();
+                    let existed_line = LineSegment {
+                        from: point(node1.x, node1.y),
+                        to: point(node2.x, node2.y)
                     };
                     if supposed_line.intersects(&existed_line) {
                         *item = 0.0f32;
+                        continue
                     }
                 }
             }
-
-            #[cfg(debug_assertions)]
-            if i == 39 {
-                println!("{:?}", &scaled_weights);
-            };
 
             let weighted_distrib = match WeightedIndex::new(&scaled_weights) {
                 Ok(weighted_distrib) => weighted_distrib,
@@ -119,7 +109,7 @@ fn euclidean_dist(n1: &Node, n2: &Node) -> f32 {
 }
 
 async fn app(window: Window, mut gfx: Graphics, mut input: Input) -> Result<()> {
-    let world = World::gen();
+    let world = World::new();
 
     // Clear the screen to a blank, white color
     gfx.clear(Color::WHITE);
