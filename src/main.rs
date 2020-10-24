@@ -11,7 +11,6 @@ use crate::animation::{Linear, LinearConfig};
 use lyon::{geom::LineSegment, math::point};
 use rand::distributions::{Distribution, Uniform, WeightedIndex};
 use rand::prelude::ThreadRng;
-use std::ops::Deref;
 use std::vec::Vec;
 
 #[derive(Debug)]
@@ -62,7 +61,7 @@ impl Connection {
     fn animate(&mut self) {
         let timing = Timer::time_per_second(30.); // TODO: make global timer
 
-        let mut animation = LinearConfig {
+        let animation = LinearConfig {
             begin_state: (self.from_coord, self.to_coord),
             timing,
             draw: Box::new(|state, percent, gfx| {
@@ -191,33 +190,6 @@ fn euclidean_dist(n1: &Node, n2: &Node) -> f32 {
 
 async fn app(window: Window, mut gfx: Graphics, mut input: Input) -> Result<()> {
     let mut world = World::new();
-
-    let timing = Timer::time_per_second(30.);
-
-    let mut animation = LinearConfig {
-        begin_state: [Vector::new(10.0, 10.0), Vector::new(500.0, 500.0)],
-        timing,
-        draw: Box::new(|state, percent, gfx| {
-            let vec1 = state[0];
-            let vec2 = state[1];
-            let middle_point = Vector::new(
-                vec1.x + (vec2.x - vec1.x) * percent,
-                vec1.y + (vec2.y - vec1.y) * percent,
-            );
-
-            let line1 = geom::LineT::new(vec1, middle_point).with_thickness(10.0);
-            let path1 = line1.draw();
-            gfx.fill_polygon(path1.as_slice(), Color::RED);
-
-            let line2 = geom::LineT::new(vec2, middle_point).with_thickness(10.0);
-            let path2 = line2.draw();
-            gfx.fill_polygon(path2.as_slice(), Color::BLACK);
-
-            Ok(())
-        }),
-        frame_count: 150,
-    }
-    .start();
 
     for connection in world.connections.iter_mut() {
         connection.animate();
