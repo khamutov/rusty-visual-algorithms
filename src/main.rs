@@ -105,11 +105,11 @@ impl Connection {
         }
     }
 
-    fn explore(&mut self) {
+    fn explore(&mut self, from_node: u32) {
         match self.state {
             ConnectionState::Unexplored => {
                 self.state = ConnectionState::Exploring;
-                self.animate()
+                self.animate(from_node)
             }
             ConnectionState::Exploring => {} // do nothing, already in state
             ConnectionState::Explored => {}  // do nothing, already explored
@@ -117,11 +117,15 @@ impl Connection {
         }
     }
 
-    fn animate(&mut self) {
+    fn animate(&mut self, from_node: u32) {
         let timing = Timer::time_per_second(30.); // TODO: make global timer
 
         let animation = LinearConfig {
-            begin_state: (self.from_coord, self.to_coord),
+            begin_state: if from_node == self.from_node {
+                (self.from_coord, self.to_coord)
+            } else {
+                (self.to_coord, self.from_coord) // reversed animation
+            },
             timing,
             draw: Box::new(|state, percent, gfx| {
                 let vec1 = state.0;
@@ -313,7 +317,7 @@ impl BFSAlgorithm {
                             || (conn.to_node == from_node && conn.from_node == to_node)
                     })
                     .next()
-                    .map(|conn| conn.explore());
+                    .map(|conn| conn.explore(from_node));
 
                 // check for target
                 if to_node == self.target {
