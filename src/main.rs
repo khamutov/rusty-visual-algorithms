@@ -33,12 +33,20 @@ impl Node {
     }
 }
 
+enum ConnectionState {
+    Unexplored,
+    Exploring,
+    Explored,
+    BestPath,
+}
+
 struct Connection {
     from_node: u32, // start node
     to_node: u32,   // end node
     from_coord: Vector,
     to_coord: Vector,
     animation: Option<Linear<(Vector, Vector)>>,
+    state: ConnectionState,
 }
 
 impl Connection {
@@ -47,14 +55,40 @@ impl Connection {
             Some(animation) => {
                 animation.draw(gfx);
                 if animation.is_ended() {
-                    self.animation = None
+                    self.animation = None;
+                    self.state = ConnectionState::Explored;
                 }
             }
             None => {
                 let line1 = geom::LineT::new(self.from_coord, self.to_coord).with_thickness(4.0);
                 let path1 = line1.draw();
-                gfx.fill_polygon(path1.as_slice(), Color::BLACK);
+                match self.state {
+                    ConnectionState::Unexplored => {
+                        gfx.fill_polygon(path1.as_slice(), Color::BLACK);
+                    }
+                    ConnectionState::Exploring => {
+                        gfx.fill_polygon(path1.as_slice(), Color::RED);
+                    }
+                    ConnectionState::Explored => {
+                        gfx.fill_polygon(path1.as_slice(), Color::RED);
+                    }
+                    ConnectionState::BestPath => {
+                        gfx.fill_polygon(path1.as_slice(), Color::BLUE);
+                    }
+                }
             }
+        }
+    }
+
+    fn explore(&mut self) {
+        match self.state {
+            ConnectionState::Unexplored => {
+                self.state = ConnectionState::Exploring;
+                self.animate()
+            }
+            ConnectionState::Exploring => {} // do nothing, already in state
+            ConnectionState::Explored => {}  // do nothing, already explored
+            ConnectionState::BestPath => {}  // do nothing
         }
     }
 
@@ -173,6 +207,7 @@ impl World {
                     from_coord: node1_coord,
                     to_coord: node2_coord,
                     animation: None,
+                    state: ConnectionState::Unexplored,
                 }
             })
             .collect();
