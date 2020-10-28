@@ -11,6 +11,7 @@ use crate::animation::{Linear, LinearConfig};
 use lyon::{geom::LineSegment, math::point};
 use rand::distributions::{Distribution, Uniform, WeightedIndex};
 use rand::prelude::ThreadRng;
+use rand::Rng;
 use std::vec::Vec;
 
 #[derive(Debug)]
@@ -223,15 +224,121 @@ fn euclidean_dist(n1: &Node, n2: &Node) -> f32 {
     ((n1.x - n2.x).powi(2) + (n1.y - n2.y).powi(2)).sqrt()
 }
 
+struct BFSAlgorithm {
+    target: u32,
+    frontier: std::collections::VecDeque<(u32, u32)>,
+    visited: std::collections::HashSet<u32>,
+    ended: bool,
+}
+
+impl BFSAlgorithm {
+    pub fn new(start: u32, target: u32, world: &mut World) -> Self {
+        let mut frontier = std::collections::VecDeque::new();
+        BFSAlgorithm::add_all_siblings(start, world, &mut frontier);
+
+        let mut visited = std::collections::HashSet::new();
+        visited.insert(start);
+
+        println!("frontier {:?}", frontier);
+        println!("visited {:?}", visited);
+
+        BFSAlgorithm {
+            target,
+            frontier,
+            visited,
+            ended: false,
+        }
+    }
+
+    fn add_all_siblings(
+        from_node: u32,
+        world: &World,
+        frontier: &mut std::collections::VecDeque<(u32, u32)>,
+    ) {
+        let initial_conns: Vec<&Connection> = world
+            .connections
+            .iter()
+            .filter(|conn| (conn.from_node == from_node) || (conn.to_node == from_node))
+            .collect();
+        for conn in initial_conns {
+            if conn.from_node == from_node {
+                frontier.push_back((conn.from_node, conn.to_node))
+            } else {
+                frontier.push_back((conn.to_node, conn.from_node))
+            }
+        }
+    }
+
+    fn step(&mut self, world: &mut World) -> bool {
+        if self.ended {
+            return false;
+        }
+
+        println!("------");
+        println!("frontier {:?}", self.frontier);
+        println!("visited {:?}", self.visited);
+
+        while let Some((from_node, to_node)) = self.frontier.pop_front() {
+            if !self.visited.contains(&to_node) {
+                // add connection as exploring
+                let conn = world
+                    .connections
+                    .iter_mut()
+                    .filter(|conn| {
+                        (conn.from_node == from_node && conn.to_node == to_node)
+                            || (conn.to_node == from_node && conn.from_node == to_node)
+                    })
+                    .next()
+                    .map(|conn| conn.explore());
+
+                // check for target
+                if to_node == self.target {
+                    self.ended = true;
+                    println!("target reached!");
+                    return false;
+                }
+
+                // add connection to that node to queue
+                self.visited.insert(to_node);
+
+                // insert all conns from new node
+                BFSAlgorithm::add_all_siblings(to_node, world, &mut self.frontier);
+
+                return true;
+            }
+        }
+        self.ended = true;
+        false
+    }
+}
+
 async fn app(window: Window, mut gfx: Graphics, mut input: Input) -> Result<()> {
     let mut world = World::new();
 
-    for connection in world.connections.iter_mut() {
-        connection.animate();
-    }
+    let mut rng = rand::thread_rng();
+    let start_node = rng.gen_range(0, world.nodes.len());
+    let target_node = {
+        let pre_gen = rng.gen_range(0, world.nodes.len());
+        if pre_gen == start_node {
+            (pre_gen + 1) % world.nodes.len()
+        } else {
+            pre_gen
+        }
+    };
+
+    let mut alg = BFSAlgorithm::new(start_node as u32, target_node as u32, &mut world);
 
     loop {
         while let Some(_) = input.next_event().await {}
+
+        // if all animations ended
+        if !world
+            .connections
+            .iter_mut()
+            .any(|conn| conn.animation.is_some())
+        {
+            alg.step(&mut world);
+        }
 
         // Clear the screen to a blank, white color
         gfx.clear(Color::WHITE);
