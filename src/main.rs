@@ -15,9 +15,32 @@ use rand::Rng;
 use std::vec::Vec;
 
 #[derive(Debug)]
+enum NodeState {
+    New,
+    Visited,
+    Start,
+    Target,
+}
+
+#[derive(Debug)]
 struct Node {
     x: f32,
     y: f32,
+    state: NodeState,
+}
+
+impl Node {
+    fn draw(&self, gfx: &mut Graphics) {
+        let node_view = Circle::new(Vector::new(self.x, self.y), 10.0);
+        let color = match self.state {
+            NodeState::New => Color::BLACK,
+            NodeState::Visited => Color::RED,
+            NodeState::Start => Color::BLUE,
+            NodeState::Target => Color::GREEN,
+        };
+        gfx.fill_circle(&node_view, color);
+        gfx.stroke_circle(&node_view, color);
+    }
 }
 
 const HEIGHT: f32 = 1024.0;
@@ -30,6 +53,7 @@ impl Node {
         Node {
             x: x_dist.sample(&mut rng),
             y: y_dist.sample(&mut rng),
+            state: NodeState::New,
         }
     }
 }
@@ -325,6 +349,8 @@ async fn app(window: Window, mut gfx: Graphics, mut input: Input) -> Result<()> 
             pre_gen
         }
     };
+    world.nodes[start_node].state = NodeState::Start;
+    world.nodes[target_node].state = NodeState::Target;
 
     let mut alg = BFSAlgorithm::new(start_node as u32, target_node as u32, &mut world);
 
@@ -343,9 +369,7 @@ async fn app(window: Window, mut gfx: Graphics, mut input: Input) -> Result<()> 
         // Clear the screen to a blank, white color
         gfx.clear(Color::WHITE);
         for node in world.nodes.iter() {
-            let node_view = Circle::new(Vector::new(node.x, node.y), 10.0);
-            gfx.fill_circle(&node_view, Color::BLACK);
-            gfx.stroke_circle(&node_view, Color::BLACK);
+            node.draw(&mut gfx);
         }
 
         for connection in world.connections.iter_mut() {
