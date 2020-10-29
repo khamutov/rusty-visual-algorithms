@@ -45,6 +45,7 @@ impl Node {
 
 const HEIGHT: f32 = 1024.0;
 const LENGTH: f32 = 768.0;
+const VELOCITY: f32 = 768.0 / 5.0; // 1 screen for 5 sec
 
 impl Node {
     pub fn new(mut rng: ThreadRng) -> Self {
@@ -118,7 +119,10 @@ impl Connection {
     }
 
     fn animate(&mut self, from_node: u32) {
-        let timing = Timer::time_per_second(30.); // TODO: make global timer
+        let ticks_per_second: f32 = 30.;
+        let timing = Timer::time_per_second(ticks_per_second); // TODO: make global timer
+        let dist = self.from_coord.distance(self.to_coord);
+        let animation_duration = (ticks_per_second * dist / VELOCITY) as usize;
 
         let animation = LinearConfig {
             begin_state: if from_node == self.from_node {
@@ -145,7 +149,7 @@ impl Connection {
 
                 Ok(())
             }),
-            frame_count: 150,
+            frame_count: animation_duration,
         }
         .start();
 
