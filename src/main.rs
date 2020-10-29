@@ -4,6 +4,7 @@ mod geom;
 use quicksilver::{
     geom::{Circle, Vector},
     graphics::{Color, Graphics},
+    input::{Event, Key},
     Input, Result, Settings, Timer, Window,
 };
 
@@ -362,8 +363,19 @@ async fn app(window: Window, mut gfx: Graphics, mut input: Input) -> Result<()> 
 
     let mut alg = BFSAlgorithm::new(start_node as u32, target_node as u32, &mut world);
 
-    loop {
-        while let Some(_) = input.next_event().await {}
+    let mut running = true;
+    while running {
+        while let Some(event) = input.next_event().await {
+            match event {
+                Event::KeyboardInput(key) if key.is_down() => {
+                    if key.key() == Key::Escape {
+                        // If the user strikes escape, end the program
+                        running = false;
+                    }
+                }
+                _ => (),
+            }
+        }
 
         // if all animations ended
         if !world
@@ -386,6 +398,7 @@ async fn app(window: Window, mut gfx: Graphics, mut input: Input) -> Result<()> 
 
         gfx.present(&window)?;
     }
+    Ok(())
 }
 
 fn main() {
